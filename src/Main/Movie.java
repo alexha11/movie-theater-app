@@ -1,10 +1,12 @@
+package Main;
+
 public class Movie {
     private String title;
     private String directorName;
     private int duration;
     private String releaseYear;
     private String review;
-    private String[] genre;
+    private String genre;
     private double rating;
     private int numberOfRatings;
 
@@ -54,11 +56,11 @@ public class Movie {
         this.review = review;
     }
 
-    public String[] getGenre() {
+    public String getGenre() {
         return genre;
     }
 
-    public void setGenre(String[] genre) {
+    public void setGenre(String genre) {
         this.genre = genre;
     }
 

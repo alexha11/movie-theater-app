@@ -1,4 +1,13 @@
+package Main;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.util.Scanner;
+
 
 public class Main {
     public static void menu() {
@@ -22,6 +31,7 @@ public class Main {
         Theater theater = new Theater();
         // use the movie database API here
 
+
         while(ok) {
             menu();
             System.out.print("Enter your choice: ");
@@ -36,9 +46,10 @@ public class Main {
                     System.out.print("Enter the duration: ");
                     int duration = sc.nextInt();
 
-                    Movie movie = new Movie(title, director, duration);
+                    Movie movie = apiConnectToGetMovieInfo(title, director, duration);
                     theater.addMovie(movie);
                     System.out.println("Movie added successfully!");
+                    System.out.println();
                     break;
                 case 2:
                     System.out.print("Enter movie title: ");
@@ -49,6 +60,7 @@ public class Main {
                     } else {
                         System.out.println("Movie not found!");
                     }
+                    System.out.println();
                     break;
                 case 3:
                     System.out.print("Enter movie title: ");
@@ -74,11 +86,11 @@ public class Main {
                         System.out.println("The title of movie not found! Please try again!");
                     }
                     else {
-                        Seat seat = new Seat();
-                        Showtime showtime = new Showtime(movie, seat, time, date, price);
+                        Showtime showtime = new Showtime(movie, time, date, price);
                         theater.addShowtime(showtime);
                         System.out.println("Showtime added successfully!");
                     }
+                    System.out.println();
                     break;
                 case 6:
                     System.out.println("Please enter the following information to remove a showtime: ");
@@ -94,6 +106,7 @@ public class Main {
                     } else {
                         System.out.println("Showtime not found!");
                     }
+                    System.out.println();
                     break;
                 case 7:
                     System.out.println("Please enter the following information to view a showtime: ");
@@ -111,16 +124,21 @@ public class Main {
                     theater.viewShowtimes();
                     break;
                 case 9:
+                    boolean isSeatAvailable = false;
                     System.out.print("Enter the movie title: ");
                     title = sc.nextLine();
                     System.out.print("Enter the showtime (time): ");
                     time = sc.nextLine();
                     System.out.print("Enter the showtime (date): ");
                     date = sc.nextLine();
-                    System.out.print("Enter the seat (row and column): ");
-                    int row = sc.nextInt();
-                    int column = sc.nextInt();
-                    theater.buyTicket(title, time, date, row, column);
+                    while(!isSeatAvailable) {
+                        System.out.print("Enter the seat (row and column): ");
+                        int row = sc.nextInt();
+                        int column = sc.nextInt();
+                        isSeatAvailable = theater.buyTicket(title, time, date, row, column);
+                    }
+
+                    System.out.println();
                     break;
                 case 10:
                     System.out.print("Enter the movie title: ");
@@ -130,13 +148,104 @@ public class Main {
                     System.out.print("Enter the showtime (date): ");
                     date = sc.nextLine();
                     theater.viewSeating(title, time, date);
+                    System.out.println();
                     break;
                 case 0:
                     System.out.println("Goodbye!");
                     ok = false;
                     break;
             }
-            System.out.println();
         }
+    }
+    public static int apiConnectToGetMovieID(Movie movie) {
+        try {
+            String apiKey = "I removed my API key for security reasons, you can get your own API key from https://www.themoviedb.org/";
+            URL url = new URL("https://api.themoviedb.org/3/search/movie?api_key=" + apiKey + "&language=en-US&page=1&include_adult=false&query=" + URLEncoder.encode(movie.getTitle(), "UTF-8"));
+
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.connect();
+
+            //Check if connect is made
+            int responseCode = conn.getResponseCode();
+
+            // 200 OK
+            if (responseCode != 200) {
+                throw new RuntimeException("HttpResponseCode: " + responseCode);
+            } else {
+                StringBuilder informationString = new StringBuilder(1024);
+                Scanner scanner = new Scanner(url.openStream());
+
+                while (scanner.hasNext()) {
+                    informationString.append(scanner.nextLine());
+                }
+                //Close the scanner
+                scanner.close();
+                //System.out.println(informationString);
+                JSONObject jsonObjectMovieId = new JSONObject(informationString.toString());
+                JSONArray results = jsonObjectMovieId.getJSONArray("results");
+                JSONObject firstResult = results.getJSONObject(0);
+
+                int idMovie = firstResult.getInt("id");
+                return idMovie;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+    public static Movie apiConnectToGetMovieInfo(String title, String director, int duration) {
+        try {
+            //Public API:
+            Movie movie = new Movie(title, director, duration);
+            int idMovie = apiConnectToGetMovieID(movie);
+            //System.out.println(idMovie);
+
+            String apiKey = "I removed my API key for security reasons, you can get your own API key from https://www.themoviedb.org/";
+            URL url = new URL("https://api.themoviedb.org/3/movie/" + Integer.toString(idMovie) + "?api_key=" + apiKey + "&language=en-US");
+
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.connect();
+
+            //Check if connect is made
+            int responseCode = conn.getResponseCode();
+
+            // 200 OK
+            if (responseCode != 200) {
+                throw new RuntimeException("HttpResponseCode: " + responseCode);
+            } else {
+
+                StringBuilder informationString = new StringBuilder(1024);
+                Scanner scanner = new Scanner(url.openStream());
+
+                while (scanner.hasNext()) {
+                    informationString.append(scanner.nextLine());
+                }
+                //Close the scanner
+                scanner.close();
+                //System.out.println(informationString);
+                JSONObject jsonObjectMovie = new JSONObject(informationString.toString());
+
+                JSONArray genres = jsonObjectMovie.getJSONArray("genres");
+                String genreslist = "";
+                for(int i = 0; i < genres.length(); i++){
+                    if(i == genres.length()-1)
+                        genreslist += genres.getJSONObject(i).getString("name");
+                    else
+                        genreslist = genreslist + genres.getJSONObject(i).getString("name") + ", ";
+                }
+
+                movie.setReleaseYear(jsonObjectMovie.getString("release_date"));
+                movie.setRating(jsonObjectMovie.getDouble("vote_average"));
+                movie.setNumberOfRatings(jsonObjectMovie.getInt("vote_count"));
+                movie.setReview(jsonObjectMovie.getString("overview"));
+                movie.setGenre("[" + genreslist + "]");
+                return movie;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

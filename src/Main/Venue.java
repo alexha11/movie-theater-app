@@ -1,3 +1,5 @@
+package Main;
+
 public class Venue {
     private String name;
     private String location;
